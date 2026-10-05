@@ -3,49 +3,77 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Garage Setup | Smart Accident Dashboard</title>
+    <title>Garage Setup | SafeGuard AI Vehicle Configuration</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <main class="cockpit page-shell">
+      <!-- Automotive Header Navigation -->
       <header class="windshield">
-        <div>
-          <p class="eyebrow">Vehicle Configuration</p>
-          <h1>Garage Setup</h1>
+        <div class="brand-section">
+          <div class="brand-icon-wrapper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="brand-info">
+            <p class="eyebrow">Fleet & Vehicle Management</p>
+            <h1 class="brand-title">
+              Garage Setup
+              <span class="brand-badge">Configuration</span>
+            </h1>
+          </div>
         </div>
+
         <div class="warning-strip">
-          <span class="lamp seatbelt">SRS</span>
-          <span class="lamp abs">ABS</span>
-          <span class="lamp gps">GPS</span>
-          <span id="twilioBadge" class="lamp">Twilio check</span>
+          <span class="lamp gps">GPS: 3D Fix</span>
+          <span class="lamp abs">Sensors: Active</span>
+          <span id="twilioBadge" class="lamp">Twilio checking</span>
           <span id="demoBadge" class="lamp">Demo mode</span>
-          <a class="header-jump" href="/">Cockpit</a>
-          <a class="header-jump" href="/service-bay">Service Bay</a>
+          <nav class="nav-group" aria-label="Main Navigation">
+            <a class="header-jump" href="/">Cockpit</a>
+            <a class="header-jump" href="/service-bay">Service Bay</a>
+            <a class="header-jump active" href="/garage-setup">Garage Setup</a>
+          </nav>
         </div>
       </header>
 
+      <!-- Vehicle Configuration Settings Panel -->
       <section id="garageSetup" class="panel garage-panel page-panel">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">Garage setup</p>
-            <h2>Vehicle Settings</h2>
+            <p class="eyebrow">Vehicle Configuration</p>
+            <h2>Telemetry & Delivery Profile</h2>
           </div>
-          <a class="mini-link" href="/">Back to Cockpit</a>
+          <a class="mini-link" href="/">← Return to Cockpit</a>
         </div>
+
         <form id="settingsForm" class="form">
           <label>
-            Vehicle number
-            <input id="vehicleInput" name="vehicle_number" autocomplete="off">
+            Vehicle Registration Number
+            <span class="field-help">Official license plate identifier transmitted in emergency broadcast</span>
+            <input id="vehicleInput" name="vehicle_number" autocomplete="off" placeholder="e.g. TN 01 AB 1234">
           </label>
+
           <label>
-            Location
-            <input id="locationInput" name="location_text" autocomplete="off">
+            Current Location Coordinates & Road
+            <span class="field-help">GPS coordinates and nearest route landmark dispatched to emergency services</span>
+            <input id="locationInput" name="location_text" autocomplete="off" placeholder="e.g. 11.0168, 76.9558 | Coimbatore Bypass">
           </label>
+
           <label class="toggle">
             <input id="demoModeInput" type="checkbox">
-            <span>Use demo delivery mode</span>
+            <div class="toggle-details">
+              <span class="toggle-title">Use Demo Delivery Mode</span>
+              <span class="toggle-description">Simulates SMS alerts and voice calls safely without consuming live carrier credits or broadcasting real emergency dispatches.</span>
+            </div>
           </label>
-          <button type="submit">Save Settings</button>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+            <button type="submit">Save Settings</button>
+            <span id="saveFeedback" style="font-size: 13px; font-weight: 600; color: var(--success); display: none;">✓ Settings Saved Successfully</span>
+          </div>
         </form>
       </section>
     </main>

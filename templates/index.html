@@ -3,164 +3,321 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Smart Accident Dashboard</title>
+    <title>SafeGuard AI | Vehicle Safety & Driver Monitoring</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <main class="cockpit">
+      <!-- Automotive Header Navigation -->
       <header class="windshield">
-        <div>
-          <p class="eyebrow">Smart Accident Detection & Driver Monitoring</p>
-          <h1>Vehicle Safety Cockpit</h1>
+        <div class="brand-section">
+          <div class="brand-icon-wrapper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="brand-info">
+            <p class="eyebrow">Smart Accident Detection & Driver Monitoring</p>
+            <h1 class="brand-title">
+              SafeGuard AI
+              <span class="brand-badge">Automotive Safety</span>
+            </h1>
+          </div>
         </div>
+
         <div class="warning-strip">
-          <span class="lamp seatbelt">SRS</span>
-          <span class="lamp abs">ABS</span>
-          <span class="lamp gps">GPS</span>
-          <span id="twilioBadge" class="lamp">Twilio check</span>
+          <span class="lamp gps">GPS: 3D Fix</span>
+          <span class="lamp abs">Sensors: Active</span>
+          <span id="twilioBadge" class="lamp">Twilio checking</span>
           <span id="demoBadge" class="lamp">Demo mode</span>
-          <a class="header-jump" href="/service-bay">Service Bay</a>
-          <a class="header-jump" href="/garage-setup">Garage Setup</a>
+          <nav class="nav-group" aria-label="Main Navigation">
+            <a class="header-jump active" href="/">Cockpit</a>
+            <a class="header-jump" href="/service-bay">Service Bay</a>
+            <a class="header-jump" href="/garage-setup">Garage Setup</a>
+          </nav>
         </div>
       </header>
 
+      <!-- Main Vehicle Safety Cockpit Overview -->
       <section class="cluster" id="overview">
-        <article class="dial status-dial">
-          <span class="dial-label">SYSTEM</span>
-          <div class="dial-ring">
-            <strong id="systemStatus">Monitoring Normal</strong>
-            <small id="sideMode">Monitoring</small>
+        <!-- LEFT: Driver Monitoring System (DMS) -->
+        <article class="cluster-card driver-card">
+          <div class="cluster-card-header">
+            <div class="card-title-group">
+              <span class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <span class="card-label">Driver Monitoring (DMS)</span>
+            </div>
+            <span id="driverStatusBadge" class="status-badge normal">Awake</span>
           </div>
-          <span id="modeDot" class="dot"></span>
-        </article>
 
-        <article class="center-console">
-          <div class="vehicle-silhouette">
-            <span class="sensor sensor-front"></span>
-            <span class="sensor sensor-left"></span>
-            <span class="sensor sensor-right"></span>
-            <span class="sensor sensor-rear"></span>
-            <span class="wheel wheel-front-left"></span>
-            <span class="wheel wheel-front-right"></span>
-            <span class="wheel wheel-rear-left"></span>
-            <span class="wheel wheel-rear-right"></span>
-            <div class="car-body">
-              <div class="car-cabin"></div>
+          <div class="driver-dms-content">
+            <div class="dms-hero-status">
+              <div class="dms-avatar-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </div>
+              <div class="dms-hero-text">
+                <span class="dms-hero-label">Driver Alertness State</span>
+                <strong id="systemStatus" class="dms-hero-value">Monitoring Normal</strong>
+                <small id="sideMode" style="display:none;">Monitoring</small>
+                <span id="modeDot" class="dot" style="display:none;"></span>
+              </div>
+            </div>
+
+            <div class="dms-metrics-grid">
+              <div class="dms-metric-box">
+                <span class="dms-metric-label">Alertness Score</span>
+                <div class="dms-metric-value">
+                  <span id="driverAlertnessVal">96%</span>
+                </div>
+                <div class="alertness-progress-wrap">
+                  <div class="alertness-progress-bar">
+                    <div id="driverAlertnessFill" class="alertness-fill" style="width: 96%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dms-metric-box">
+                <span class="dms-metric-label">Eye / Blink Status</span>
+                <div id="driverEyeStatus" class="dms-metric-value">Normal</div>
+                <span class="field-help">IR Camera Active</span>
+              </div>
             </div>
           </div>
+        </article>
+
+        <!-- CENTER: Vehicle Visualization & Active Timer -->
+        <article class="cluster-card center-console-card">
+          <div class="cluster-card-header">
+            <div class="card-title-group">
+              <span class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+                  <circle cx="7" cy="17" r="2"/>
+                  <path d="M9 17h6"/>
+                  <circle cx="17" cy="17" r="2"/>
+                </svg>
+              </span>
+              <span class="card-label">Vehicle Sensor Topology</span>
+            </div>
+            <span id="vehicleSensorStatus" class="status-badge normal">4 Sensors Armed</span>
+          </div>
+
+          <!-- Top-View Vehicle Blueprint -->
+          <div class="vehicle-visual-container">
+            <div class="vehicle-blueprint" aria-label="Vehicle Schematic">
+              <!-- Wheels -->
+              <div class="car-wheel fl"></div>
+              <div class="car-wheel fr"></div>
+              <div class="car-wheel rl"></div>
+              <div class="car-wheel rr"></div>
+              <!-- Chassis -->
+              <div class="car-chassis"></div>
+              <!-- Windshields & Roof -->
+              <div class="car-windshield-rear"></div>
+              <div class="car-roof"></div>
+              <div class="car-windshield-front"></div>
+              <!-- Impact Sensors -->
+              <div id="sensorFront" class="auto-sensor front" title="Front Impact Sensor">F</div>
+              <div id="sensorRear" class="auto-sensor rear" title="Rear Impact Sensor">R</div>
+              <div id="sensorLeft" class="auto-sensor left" title="Left Impact Sensor">L</div>
+              <div id="sensorRight" class="auto-sensor right" title="Right Impact Sensor">R</div>
+            </div>
+          </div>
+
+          <!-- Active Timer & Status Readout Banner -->
           <div class="console-readout">
-            <span>Active Timer</span>
+            <span class="timer-label">Active Escalation Timer</span>
             <strong id="activeTimer">--:--</strong>
             <p id="banner">System is monitoring continuously. No accident event is active.</p>
           </div>
         </article>
 
-        <article class="dial alert-dial">
-          <span class="dial-label">ALERT</span>
-          <div class="dial-ring">
-            <strong id="alarmState">Silent</strong>
-            <small id="dispatchState">Standby</small>
+        <!-- RIGHT: Emergency Escalation Status -->
+        <article class="cluster-card emergency-card">
+          <div class="cluster-card-header">
+            <div class="card-title-group">
+              <span class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </span>
+              <span class="card-label">Emergency Response</span>
+            </div>
+            <span id="emergencyHeaderBadge" class="status-badge normal">Standby</span>
+          </div>
+
+          <div class="emergency-status-content">
+            <div class="emergency-hero-status">
+              <div class="emergency-status-row">
+                <span class="label">Audible Alarm:</span>
+                <strong id="alarmState">Silent</strong>
+              </div>
+              <div class="emergency-status-row">
+                <span class="label">Dispatch Stage:</span>
+                <strong id="dispatchState">Standby</strong>
+              </div>
+            </div>
+
+            <div class="dms-metrics-grid">
+              <div class="dms-metric-box">
+                <span class="dms-metric-label">In-Cabin Buzzer</span>
+                <div id="cabinBuzzerStatus" class="dms-metric-value">Off (Normal)</div>
+              </div>
+              <div class="dms-metric-box">
+                <span class="dms-metric-label">Emergency Relay</span>
+                <div class="dms-metric-value">
+                  <span class="status-dot-indicator"></span>Ready
+                </div>
+              </div>
+            </div>
           </div>
         </article>
       </section>
 
+      <!-- Bottom Dashboard Grid -->
       <section class="cockpit-grid">
+        <!-- LEFT COLUMN: Vehicle Telemetry & Details -->
         <div class="left-dash">
           <section class="panel telemetry">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Vehicle telemetry</p>
+                <p class="eyebrow">Vehicle Telemetry</p>
                 <h2>Accident Event Details</h2>
               </div>
-              <span id="eventTime" class="pill subtle">--:--</span>
+              <span id="eventTime" class="pill subtle" title="Last event timestamp">--:--</span>
             </div>
+
             <div class="telemetry-grid">
-              <div>
-                <span>Vehicle Number</span>
+              <div class="telemetry-item">
+                <span>Vehicle Registration</span>
                 <strong id="vehicleNumber">TN 01 AB 1234</strong>
               </div>
-              <div>
-                <span>Location</span>
+              <div class="telemetry-item">
+                <span>Location Coordinates</span>
                 <strong id="locationText">Coimbatore Bypass</strong>
               </div>
-              <div>
+              <div class="telemetry-item">
                 <span>Current Stage</span>
                 <strong id="currentStage">Continuous monitoring active</strong>
               </div>
-              <div>
+              <div class="telemetry-item">
                 <span>Driver Response</span>
                 <strong id="driverResponse">Waiting for normal operation</strong>
               </div>
-              <div>
-                <span>Recipients</span>
+              <div class="telemetry-item">
+                <span>Acceleration / Impact</span>
+                <strong id="impactGForce">1.02 G (Nominal Vector)</strong>
+              </div>
+              <div class="telemetry-item">
+                <span>Communication Gateway</span>
+                <strong id="commGateway">Twilio Gateway (Active)</strong>
+              </div>
+              <div class="telemetry-item" style="grid-column: span 2;">
+                <span>Alert Recipients</span>
                 <strong id="recipientsSummary">No alerts sent yet</strong>
               </div>
+
+              <!-- Dispatch Notification Summary Card -->
               <div class="dispatch-tile">
-                <span>Emergency Dispatch</span>
+                <span>Emergency Dispatch Routing</span>
                 <strong id="dispatchHeadline">Monitoring clear</strong>
                 <em id="dispatchSubline">Emergency alerts are on standby.</em>
               </div>
             </div>
           </section>
 
+          <!-- Status Rail -->
           <section class="status-rail">
             <article>
               <span>GPS Lock</span>
-              <strong>Active</strong>
+              <strong>Active (3D Fix)</strong>
             </article>
             <article>
               <span>Sensor Health</span>
               <strong>4/4 Online</strong>
             </article>
             <article>
-              <span>Alert Mode</span>
+              <span>Delivery Mode</span>
               <strong id="railAlertMode">Demo Mode</strong>
             </article>
             <article>
-              <span>Last Event</span>
+              <span>Last Event Time</span>
               <strong id="railLastEvent">No event</strong>
             </article>
           </section>
         </div>
 
+        <!-- RIGHT COLUMN: Emergency Console & Escalation Timeline -->
         <div class="right-dash">
+          <!-- Emergency Command Console -->
           <section class="panel controls">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Steering controls</p>
-                <h2>Emergency Console</h2>
+                <p class="eyebrow">Tactical Controls</p>
+                <h2>Emergency Command Console</h2>
               </div>
             </div>
+
             <div class="control-wheel">
-              <button class="danger" data-action="simulate_accident">ACCIDENT</button>
-              <button class="success" data-action="driver_responded">DRIVER OK</button>
-              <button class="sms" data-action="send_sms_now">SMS</button>
-              <button class="warning" data-action="call_contacts_now">CALL</button>
-              <button class="cancel" data-action="cancel_false_alarm">CANCEL</button>
-              <button class="reset" data-action="reset">RESET</button>
+              <!-- Primary Critical Action -->
+              <button class="danger" data-action="simulate_accident" title="Simulate vehicle collision event">
+                🚨 ACCIDENT DETECTED
+              </button>
+              
+              <!-- Secondary Safety Actions -->
+              <button class="success" data-action="driver_responded" title="Acknowledge driver is conscious and safe">
+                ✓ DRIVER OK
+              </button>
+              <button class="cancel" data-action="cancel_false_alarm" title="Cancel false alarm and stop countdown">
+                ✕ CANCEL ALERT
+              </button>
+
+              <!-- Communication Actions -->
+              <button class="sms" data-action="send_sms_now" title="Send emergency SMS broadcast immediately">
+                ✉ SEND SMS
+              </button>
+              <button class="warning" data-action="call_contacts_now" title="Initiate automated voice calls immediately">
+                📞 CALL RESPONDERS
+              </button>
+
+              <!-- System Action -->
+              <button class="reset" data-action="reset" style="grid-column: span 2;" title="Reset system back to normal monitoring">
+                ↺ RESET MONITORING SYSTEM
+              </button>
             </div>
           </section>
 
+          <!-- Escalation Timeline -->
           <section id="workflow" class="panel workflow-panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Emergency route</p>
-                <h2>Escalation Timeline</h2>
+                <p class="eyebrow">Dispatch Workflow</p>
+                <h2>Emergency Escalation Timeline</h2>
               </div>
             </div>
+
             <div class="timeline" id="timeline">
               <div data-step="normal"><b>1</b><span>Monitor</span></div>
-              <div data-step="driver_wait"><b>2</b><span>Driver</span></div>
-              <div data-step="message_dispatch"><b>3</b><span>SMS</span></div>
-              <div data-step="contact_wait"><b>4</b><span>Ack</span></div>
-              <div data-step="auto_calling"><b>5</b><span>Call</span></div>
-              <div data-step="completed"><b>6</b><span>Done</span></div>
+              <div data-step="driver_wait"><b>2</b><span>Driver Ack</span></div>
+              <div data-step="message_dispatch"><b>3</b><span>Send SMS</span></div>
+              <div data-step="contact_wait"><b>4</b><span>Wait Ack</span></div>
+              <div data-step="auto_calling"><b>5</b><span>Voice Call</span></div>
+              <div data-step="completed"><b>6</b><span>Dispatched</span></div>
             </div>
           </section>
-
         </div>
       </section>
-
     </main>
 
     <script src="/static/app.js"></script>

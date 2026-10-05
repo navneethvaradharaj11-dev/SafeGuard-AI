@@ -32,12 +32,25 @@ const els = {
   railAlertMode: qs("#railAlertMode"),
   railLastEvent: qs("#railLastEvent"),
   dispatchHeadline: qs("#dispatchHeadline"),
-  dispatchSubline: qs("#dispatchSubline")
+  dispatchSubline: qs("#dispatchSubline"),
+  // Automotive UI Enhancements
+  driverStatusBadge: qs("#driverStatusBadge"),
+  driverAlertnessVal: qs("#driverAlertnessVal"),
+  driverAlertnessFill: qs("#driverAlertnessFill"),
+  driverEyeStatus: qs("#driverEyeStatus"),
+  vehicleSensorStatus: qs("#vehicleSensorStatus"),
+  sensorFront: qs("#sensorFront"),
+  sensorRear: qs("#sensorRear"),
+  sensorLeft: qs("#sensorLeft"),
+  sensorRight: qs("#sensorRight"),
+  emergencyHeaderBadge: qs("#emergencyHeaderBadge"),
+  cabinBuzzerStatus: qs("#cabinBuzzerStatus"),
+  impactGForce: qs("#impactGForce"),
+  commGateway: qs("#commGateway"),
+  saveFeedback: qs("#saveFeedback")
 };
 
 let lastContactsKey = "";
-let lastSystemGauge = null;
-let lastAlertGauge = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -51,17 +64,19 @@ async function api(path, options = {}) {
 }
 
 async function postAction(action) {
-  await api("/api/action", {
-    method: "POST",
-    body: JSON.stringify({ action })
-  });
-  await refresh();
+  try {
+    await api("/api/action", {
+      method: "POST",
+      body: JSON.stringify({ action })
+    });
+    await refresh();
+  } catch (err) {
+    console.error("Action error:", err);
+  }
 }
 
 function setText(element, value) {
-  if (!element) {
-    return;
-  }
+  if (!element) return;
   element.textContent = value || "";
 }
 
@@ -79,28 +94,121 @@ function bind(element, eventName, handler) {
 
 function modeLabel(mode) {
   const labels = {
-    normal: "Monitoring",
-    driver_wait: "Driver timer",
-    message_dispatch: "Sending SMS",
-    contact_wait: "Awaiting ack",
-    auto_calling: "Calling",
-    completed: "Completed",
-    resolved: "Resolved"
+    normal: "Monitoring Normal",
+    driver_wait: "Awaiting Driver Response",
+    message_dispatch: "Sending Emergency SMS",
+    contact_wait: "Awaiting Contact Ack",
+    auto_calling: "Escalating Voice Calls",
+    completed: "Dispatch Cycle Completed",
+    resolved: "Resolved Safe"
   };
   return labels[mode] || mode;
 }
 
 function applyTheme(mode) {
-  els.body.classList.remove("is-danger", "is-warning", "is-success");
-  if (["driver_wait", "message_dispatch", "auto_calling", "completed"].includes(mode)) {
-    els.body.classList.add("is-danger");
-    return;
+  // Update Driver Monitoring UI
+  if (els.driverStatusBadge) {
+    els.driverStatusBadge.className = "status-badge";
+    if (mode === "normal") {
+      els.driverStatusBadge.classList.add("normal");
+      setText(els.driverStatusBadge, "Awake");
+      setText(els.driverAlertnessVal, "96%");
+      if (els.driverAlertnessFill) {
+        els.driverAlertnessFill.style.width = "96%";
+        els.driverAlertnessFill.style.backgroundColor = "var(--success)";
+      }
+      setText(els.driverEyeStatus, "Normal");
+    } else if (mode === "driver_wait") {
+      els.driverStatusBadge.classList.add("warning");
+      setText(els.driverStatusBadge, "Checking Response");
+      setText(els.driverAlertnessVal, "55%");
+      if (els.driverAlertnessFill) {
+        els.driverAlertnessFill.style.width = "55%";
+        els.driverAlertnessFill.style.backgroundColor = "var(--warning)";
+      }
+      setText(els.driverEyeStatus, "Closed / Warning");
+    } else if (["message_dispatch", "contact_wait", "auto_calling", "completed"].includes(mode)) {
+      els.driverStatusBadge.classList.add("danger");
+      setText(els.driverStatusBadge, "Unresponsive");
+      setText(els.driverAlertnessVal, "Critical");
+      if (els.driverAlertnessFill) {
+        els.driverAlertnessFill.style.width = "10%";
+        els.driverAlertnessFill.style.backgroundColor = "var(--danger)";
+      }
+      setText(els.driverEyeStatus, "No Response");
+    } else if (mode === "resolved") {
+      els.driverStatusBadge.classList.add("normal");
+      setText(els.driverStatusBadge, "Confirmed Safe");
+      setText(els.driverAlertnessVal, "100%");
+      if (els.driverAlertnessFill) {
+        els.driverAlertnessFill.style.width = "100%";
+        els.driverAlertnessFill.style.backgroundColor = "var(--success)";
+      }
+      setText(els.driverEyeStatus, "Normal");
+    }
   }
-  if (mode === "contact_wait") {
-    els.body.classList.add("is-warning");
-    return;
+
+  // Update Vehicle Top-View Sensors
+  const isAccident = ["driver_wait", "message_dispatch", "contact_wait", "auto_calling", "completed"].includes(mode);
+  if (els.vehicleSensorStatus) {
+    els.vehicleSensorStatus.className = "status-badge " + (isAccident ? "danger" : "normal");
+    setText(els.vehicleSensorStatus, isAccident ? "Impact Detected" : "4 Sensors Armed");
   }
-  els.body.classList.add("is-success");
+
+  if (els.sensorFront) {
+    els.sensorFront.classList.toggle("impact-alert", isAccident);
+  }
+  if (els.sensorLeft) {
+    els.sensorLeft.classList.toggle("impact-alert", isAccident);
+  }
+
+  // Update Emergency Card Status
+  if (els.emergencyHeaderBadge) {
+    els.emergencyHeaderBadge.className = "status-badge";
+    if (mode === "normal") {
+      els.emergencyHeaderBadge.classList.add("normal");
+      setText(els.emergencyHeaderBadge, "Standby");
+    } else if (mode === "driver_wait" || mode === "contact_wait") {
+      els.emergencyHeaderBadge.classList.add("warning");
+      setText(els.emergencyHeaderBadge, "Timer Active");
+    } else if (mode === "message_dispatch" || mode === "auto_calling") {
+      els.emergencyHeaderBadge.classList.add("danger");
+      setText(els.emergencyHeaderBadge, "Escalating");
+    } else if (mode === "completed") {
+      els.emergencyHeaderBadge.classList.add("danger");
+      setText(els.emergencyHeaderBadge, "Dispatched");
+    } else {
+      els.emergencyHeaderBadge.classList.add("normal");
+      setText(els.emergencyHeaderBadge, "Resolved");
+    }
+  }
+
+  // Update In-Cabin Buzzer
+  if (els.cabinBuzzerStatus) {
+    if (mode === "normal") {
+      setText(els.cabinBuzzerStatus, "Off (Nominal)");
+    } else if (mode === "driver_wait") {
+      setText(els.cabinBuzzerStatus, "Active (85dB Pulse)");
+    } else if (["message_dispatch", "contact_wait", "auto_calling", "completed"].includes(mode)) {
+      setText(els.cabinBuzzerStatus, "Active (Continuous)");
+    } else {
+      setText(els.cabinBuzzerStatus, "Muted");
+    }
+  }
+
+  // Update Impact G-Force
+  if (els.impactGForce) {
+    if (isAccident) {
+      setText(els.impactGForce, "4.85 G (Impact Threshold Exceeded)");
+      els.impactGForce.style.color = "var(--danger)";
+    } else if (mode === "resolved") {
+      setText(els.impactGForce, "1.00 G (Stabilized)");
+      els.impactGForce.style.color = "var(--text-primary)";
+    } else {
+      setText(els.impactGForce, "1.02 G (Nominal Vector)");
+      els.impactGForce.style.color = "var(--text-primary)";
+    }
+  }
 }
 
 function updateTimeline(mode) {
@@ -129,92 +237,39 @@ function updateDispatchPanel(state) {
   setText(els.dispatchSubline, subline);
 }
 
-function secondsFromTimer(value) {
-  const match = String(value || "").match(/^(\d{2}):(\d{2})$/);
-  if (!match) {
-    return null;
+function formatRole(role) {
+  const clean = String(role || "Responder");
+  if (clean.toLowerCase().includes("family")) {
+    return `<span class="role-badge family">Family / Personal</span>`;
   }
-  return Number(match[1]) * 60 + Number(match[2]);
-}
-
-function gaugeTargets(state) {
-  const seconds = secondsFromTimer(state.active_timer);
-  if (state.mode === "driver_wait" && seconds !== null) {
-    const elapsed = Math.max(0, Math.min(30, 30 - seconds));
-    const percent = Math.round((elapsed / 30) * 100);
-    return { system: Math.max(18, percent), alert: Math.max(40, percent) };
-  }
-  if (state.mode === "contact_wait" && seconds !== null) {
-    const elapsed = Math.max(0, Math.min(15, 15 - seconds));
-    const percent = Math.round((elapsed / 15) * 100);
-    return { system: 100, alert: Math.max(55, percent) };
-  }
-  const targets = {
-    normal: { system: 72, alert: 24 },
-    message_dispatch: { system: 100, alert: 78 },
-    auto_calling: { system: 100, alert: 92 },
-    completed: { system: 100, alert: 100 },
-    resolved: { system: 64, alert: 32 }
-  };
-  return targets[state.mode] || targets.normal;
-}
-
-function setAnimatedGauge(name, percent) {
-  const value = Math.max(0, Math.min(100, Number(percent) || 0));
-  const property = name === "system" ? "--system-angle" : "--alert-angle";
-  const lastKey = name === "system" ? lastSystemGauge : lastAlertGauge;
-  if (lastKey === value) {
-    return;
-  }
-  if (name === "system") {
-    lastSystemGauge = value;
-  } else {
-    lastAlertGauge = value;
-  }
-  document.documentElement.style.setProperty(property, "0deg");
-  window.requestAnimationFrame(() => {
-    window.requestAnimationFrame(() => {
-      document.documentElement.style.setProperty(property, `${Math.round(value * 2.72)}deg`);
-    });
-  });
-}
-
-function updateGauges(state) {
-  const targets = gaugeTargets(state);
-  setAnimatedGauge("system", targets.system);
-  setAnimatedGauge("alert", targets.alert);
+  return `<span class="role-badge responder">${escapeHtml(clean)}</span>`;
 }
 
 function chip(status) {
-  const normalized = String(status || "Standby").toLowerCase();
-  return `<span class="status-chip ${normalized}">${status}</span>`;
+  const val = String(status || "Standby");
+  const normalized = val.toLowerCase().replace(/\s+/g, "-");
+  return `<span class="status-chip ${normalized}">${escapeHtml(val)}</span>`;
 }
 
 function renderContacts(contacts) {
-  if (!els.contactsBody) {
-    return;
-  }
+  if (!els.contactsBody) return;
   const key = JSON.stringify(contacts);
-  if (key === lastContactsKey) {
-    return;
-  }
+  if (key === lastContactsKey) return;
   lastContactsKey = key;
   els.contactsBody.innerHTML = contacts.map((contact, index) => `
     <tr>
-      <td>${escapeHtml(contact.name)}</td>
-      <td>${escapeHtml(contact.role)}</td>
-      <td>${escapeHtml(contact.number)}</td>
+      <td style="font-weight: 600;">${escapeHtml(contact.name)}</td>
+      <td>${formatRole(contact.role)}</td>
+      <td style="font-family: ui-monospace, monospace; color: var(--text-secondary);">${escapeHtml(contact.number)}</td>
       <td>${chip(contact.sms_status)}</td>
       <td>${chip(contact.call_status)}</td>
-      <td><button type="button" data-edit="${index}">Edit</button></td>
+      <td style="text-align: right;"><button type="button" data-edit="${index}">Edit</button></td>
     </tr>
   `).join("");
 }
 
 function renderLogs(logs) {
-  if (!els.logList) {
-    return;
-  }
+  if (!els.logList) return;
   els.logList.innerHTML = logs.slice(-80).map((entry) => `
     <div class="log-row ${escapeHtml(entry.level)}">
       <time>${escapeHtml(entry.time)}</time>
@@ -248,10 +303,34 @@ function renderState(state) {
   setText(els.driverResponse, state.driver_response);
   setText(els.recipientsSummary, state.recipients_summary);
 
-  setText(els.twilioBadge, state.twilio_ready ? "Twilio ready" : "Twilio not configured");
-  setText(els.demoBadge, state.demo_mode ? "Demo mode" : "Real Twilio mode");
-  setText(els.railAlertMode, state.demo_mode ? "Demo Mode" : "Real Twilio");
-  setText(els.railLastEvent, state.event_time === "--:--" ? "No event" : state.event_time);
+  // Honest Integration and Mode Badges
+  if (els.twilioBadge) {
+    if (state.twilio_ready) {
+      els.twilioBadge.className = "lamp ready";
+      els.twilioBadge.textContent = "Twilio: Ready";
+    } else {
+      els.twilioBadge.className = "lamp not-configured";
+      els.twilioBadge.textContent = "Twilio: Not Configured";
+    }
+  }
+
+  if (els.demoBadge) {
+    if (state.demo_mode) {
+      els.demoBadge.className = "lamp demo";
+      els.demoBadge.textContent = "Mode: Demo (Simulated)";
+    } else {
+      els.demoBadge.className = "lamp real";
+      els.demoBadge.textContent = "Mode: Live Twilio";
+    }
+  }
+
+  setText(els.railAlertMode, state.demo_mode ? "Demo Mode (Simulated)" : "Live Twilio Carrier");
+  setText(els.railLastEvent, state.event_time === "--:--" ? "No recent event" : state.event_time);
+
+  if (els.commGateway) {
+    setText(els.commGateway, state.demo_mode ? "Demo Simulator Gateway" : "Live Twilio Gateway");
+  }
+
   if (els.demoModeInput) {
     els.demoModeInput.checked = state.demo_mode;
   }
@@ -259,7 +338,6 @@ function renderState(state) {
   setInputValue(els.locationInput, state.location_text);
 
   applyTheme(state.mode);
-  updateGauges(state);
   updateTimeline(state.mode);
   updateDispatchPanel(state);
   renderContacts(state.contacts);
@@ -271,59 +349,77 @@ async function refresh() {
     const state = await api("/api/state");
     renderState(state);
   } catch (error) {
-    console.error(error);
+    console.error("Dashboard refresh error:", error);
   }
 }
 
+// Bind Emergency Action Buttons
 document.querySelectorAll("[data-action]").forEach((button) => {
   button.addEventListener("click", () => postAction(button.dataset.action));
 });
 
+// Bind Settings Form (Garage Setup)
 bind(els.settingsForm, "submit", async (event) => {
   event.preventDefault();
-  await api("/api/settings", {
-    method: "POST",
-    body: JSON.stringify({
-      vehicle_number: els.vehicleInput.value,
-      location_text: els.locationInput.value,
-      demo_mode: els.demoModeInput.checked
-    })
-  });
-  await refresh();
+  try {
+    await api("/api/settings", {
+      method: "POST",
+      body: JSON.stringify({
+        vehicle_number: els.vehicleInput.value,
+        location_text: els.locationInput.value,
+        demo_mode: els.demoModeInput.checked
+      })
+    });
+    if (els.saveFeedback) {
+      els.saveFeedback.style.display = "inline";
+      setTimeout(() => {
+        if (els.saveFeedback) els.saveFeedback.style.display = "none";
+      }, 3000);
+    }
+    await refresh();
+  } catch (err) {
+    console.error("Settings save error:", err);
+  }
 });
 
+// Bind Contacts Table Edit Button
 bind(els.contactsBody, "click", async (event) => {
   const button = event.target.closest("[data-edit]");
-  if (!button || !els.contactDialog) {
-    return;
+  if (!button || !els.contactDialog) return;
+  try {
+    const state = await api("/api/state");
+    const index = Number(button.dataset.edit);
+    const contact = state.contacts[index];
+    if (!contact) return;
+    els.contactIndex.value = String(index);
+    els.contactName.value = contact.name;
+    els.contactNumber.value = contact.number;
+    els.contactDialog.showModal();
+  } catch (err) {
+    console.error("Contact edit dialog error:", err);
   }
-  const state = await api("/api/state");
-  const index = Number(button.dataset.edit);
-  const contact = state.contacts[index];
-  if (!contact) {
-    return;
-  }
-  els.contactIndex.value = String(index);
-  els.contactName.value = contact.name;
-  els.contactNumber.value = contact.number;
-  els.contactDialog.showModal();
 });
 
 bind(els.closeDialog, "click", () => els.contactDialog.close());
 
 bind(els.contactForm, "submit", async (event) => {
   event.preventDefault();
-  await api("/api/contact", {
-    method: "POST",
-    body: JSON.stringify({
-      index: Number(els.contactIndex.value),
-      name: els.contactName.value,
-      number: els.contactNumber.value
-    })
-  });
-  els.contactDialog.close();
-  await refresh();
+  try {
+    await api("/api/contact", {
+      method: "POST",
+      body: JSON.stringify({
+        index: Number(els.contactIndex.value),
+        name: els.contactName.value,
+        number: els.contactNumber.value
+      })
+    });
+    els.contactDialog.close();
+    await refresh();
+  } catch (err) {
+    console.error("Contact form error:", err);
+  }
 });
 
+// Start real-time telemetry polling
 refresh();
 setInterval(refresh, 1000);

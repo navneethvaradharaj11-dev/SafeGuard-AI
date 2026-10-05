@@ -3,53 +3,72 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Service Bay | Smart Accident Dashboard</title>
+    <title>Service Bay | SafeGuard AI Automotive Console</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <main class="cockpit page-shell">
+      <!-- Automotive Header Navigation -->
       <header class="windshield">
-        <div>
-          <p class="eyebrow">Responder Dispatch & Black Box</p>
-          <h1>Service Bay</h1>
+        <div class="brand-section">
+          <div class="brand-icon-wrapper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="brand-info">
+            <p class="eyebrow">Emergency Response Management</p>
+            <h1 class="brand-title">
+              Service Bay & Dispatch Console
+              <span class="brand-badge">Black Box</span>
+            </h1>
+          </div>
         </div>
+
         <div class="warning-strip">
-          <span class="lamp seatbelt">SRS</span>
-          <span class="lamp abs">ABS</span>
-          <span class="lamp gps">GPS</span>
-          <span id="twilioBadge" class="lamp">Twilio check</span>
+          <span class="lamp gps">GPS: 3D Fix</span>
+          <span class="lamp abs">Sensors: Active</span>
+          <span id="twilioBadge" class="lamp">Twilio checking</span>
           <span id="demoBadge" class="lamp">Demo mode</span>
-          <a class="header-jump" href="/">Cockpit</a>
-          <a class="header-jump" href="/garage-setup">Garage Setup</a>
+          <nav class="nav-group" aria-label="Main Navigation">
+            <a class="header-jump" href="/">Cockpit</a>
+            <a class="header-jump active" href="/service-bay">Service Bay</a>
+            <a class="header-jump" href="/garage-setup">Garage Setup</a>
+          </nav>
         </div>
       </header>
 
+      <!-- Service Bay Workstation Split -->
       <section id="serviceBay" class="panel service-panel page-panel">
         <div class="service-head">
           <div>
-            <p class="eyebrow">Service bay</p>
-            <h2>Responder Dispatch & Black Box</h2>
+            <p class="eyebrow">Automotive Safety Administration</p>
+            <h2>Emergency Contacts & Telemetry Log</h2>
           </div>
-          <a class="mini-link" href="/">Back to Cockpit</a>
+          <a class="mini-link" href="/">← Return to Cockpit</a>
         </div>
+
         <div class="service-split">
+          <!-- Left Workstation: Responder Contacts -->
           <div id="contacts" class="service-pane contacts-panel">
             <div class="panel-head compact">
               <div>
-                <p class="eyebrow">Responder lane</p>
-                <h2>Contact Status</h2>
+                <p class="eyebrow">Priority Escalation Roster</p>
+                <h2>Emergency Responders</h2>
               </div>
             </div>
+            
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Number</th>
-                    <th>SMS</th>
-                    <th>Call</th>
-                    <th></th>
+                    <th>Contact Name</th>
+                    <th>Role / Department</th>
+                    <th>Phone Number</th>
+                    <th>SMS Delivery</th>
+                    <th>Call Escalation</th>
+                    <th style="text-align: right;">Action</th>
                   </tr>
                 </thead>
                 <tbody id="contactsBody"></tbody>
@@ -57,34 +76,40 @@
             </div>
           </div>
 
+          <!-- Right Workstation: Black Box / Flight Recorder -->
           <div class="service-pane log-panel">
             <div class="panel-head compact">
               <div>
-                <p class="eyebrow">Black box</p>
-                <h2>Workflow Log</h2>
+                <p class="eyebrow">Flight Recorder</p>
+                <h2>Black Box Telemetry Log</h2>
               </div>
             </div>
-            <div id="logList" class="logs"></div>
+            <div id="logList" class="logs" aria-live="polite"></div>
           </div>
         </div>
       </section>
     </main>
 
+    <!-- Modal Dialog for Editing Contacts -->
     <dialog id="contactDialog">
       <form method="dialog" id="contactForm">
-        <h3>Edit Contact</h3>
+        <h3>Edit Emergency Contact</h3>
+        <p class="field-help" style="margin-top: -6px;">Update responder phone number or identification for emergency dispatch.</p>
         <input type="hidden" id="contactIndex">
+        
         <label>
-          Name
-          <input id="contactName" autocomplete="off">
+          Contact / Entity Name
+          <input id="contactName" autocomplete="off" placeholder="e.g. Primary Emergency Contact">
         </label>
+        
         <label>
-          Number
-          <input id="contactNumber" autocomplete="off">
+          Phone Number (with Country Code)
+          <input id="contactNumber" autocomplete="off" placeholder="+91XXXXXXXXXX">
         </label>
+        
         <div class="dialog-actions">
           <button value="cancel" type="button" id="closeDialog">Cancel</button>
-          <button value="default" type="submit">Save</button>
+          <button value="default" type="submit">Save Changes</button>
         </div>
       </form>
     </dialog>
