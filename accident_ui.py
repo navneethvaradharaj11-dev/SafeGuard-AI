@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 from datetime import datetime
+from pathlib import Path
 
 from twilio import TwilioService, build_emergency_sms, build_voice_message
 
@@ -35,6 +36,13 @@ class SmartAccidentDashboard:
         self.root.geometry("1360x790")
         self.root.minsize(1180, 720)
         self.root.configure(bg=self.BG)
+
+        ico_file = Path(__file__).resolve().parent / "static" / "favicon.ico"
+        if ico_file.exists():
+            try:
+                self.root.iconbitmap(str(ico_file))
+            except Exception:
+                pass
 
         self.vehicle_number = "TN 01 AB 1234"
         self.location_text = "11.0168, 76.9558  |  Coimbatore Bypass"

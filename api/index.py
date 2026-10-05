@@ -43,6 +43,11 @@ class handler(DashboardRequestHandler):
         if norm_path == "/api/state":
             self._send_json(CONTROLLER.get_state())
             return
+        if norm_path in {"/favicon.ico", "/favicon.png", "/apple-touch-icon.png"}:
+            target = (STATIC_DIR / norm_path.lstrip("/")).resolve()
+            if target.exists() and target.is_file():
+                self._send_file(target)
+                return
         if norm_path.startswith("/static/"):
             relative = norm_path.removeprefix("/static/")
             target = (STATIC_DIR / relative).resolve()

@@ -434,6 +434,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/state":
             self._send_json(CONTROLLER.get_state())
             return
+        if path in {"/favicon.ico", "/favicon.png", "/apple-touch-icon.png"}:
+            target = (STATIC_DIR / path.lstrip("/")).resolve()
+            if target.exists():
+                self._send_file(target)
+                return
         if path.startswith("/static/"):
             relative = path.removeprefix("/static/")
             target = (STATIC_DIR / relative).resolve()

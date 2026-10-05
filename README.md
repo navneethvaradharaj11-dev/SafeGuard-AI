@@ -1,5 +1,9 @@
 # SafeGuard AI - Smart Accident Detection & Response System
 
+<p align="center">
+  <img src="static/logo.png" alt="SafeGuard AI logo" width="180" />
+</p>
+
 **© 2026 Navneeth Varadharaj. All rights reserved.**
 
 A compact Python-based demonstration of an end-to-end accident detection and emergency response workflow. SafeGuard AI provides both a browser dashboard and a Tkinter desktop interface to simulate real-time accident detection and emergency escalation.
