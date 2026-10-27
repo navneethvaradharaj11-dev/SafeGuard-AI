@@ -1644,3 +1644,160 @@ dialog::backdrop {
     padding-bottom: 12px;
   }
 }
+
+/* ==========================================================================
+   Enhanced Hardware Diagnostics, Live DMS Camera & AI Severity
+   ========================================================================== */
+
+.camera-toggle-btn {
+  background: var(--surface-subtle);
+  border: 1px solid var(--primary-blue-border);
+  color: var(--primary-blue);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.camera-toggle-btn:hover {
+  background: var(--primary-blue);
+  color: #FFFFFF;
+}
+
+.dms-camera-box {
+  position: relative;
+  margin-bottom: 10px;
+  background: #000000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+
+.camera-overlay-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(16, 35, 63, 0.8);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pulse-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 6px #10B981;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.ai-severity-card {
+  background: linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(255, 255, 255, 0.95) 100%);
+  border: 1px solid var(--primary-blue-border) !important;
+  border-left: 4px solid var(--primary-blue) !important;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.preset-btn {
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+
+.preset-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.preset-btn.minor {
+  border-color: #F9DA94;
+  color: #B45309;
+  background: #FEF3C7;
+}
+
+.preset-btn.severe {
+  border-color: #F8B4B4;
+  color: #DC2626;
+  background: #FEE2E2;
+}
+
+.preset-btn.rollover {
+  border-color: #DDD6FE;
+  color: #7C3AED;
+  background: #EDE9FE;
+}
+
+.automotive-modal {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 22px;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.automotive-modal::backdrop {
+  background: rgba(16, 35, 63, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 12px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.close-btn:hover {
+  color: var(--text-primary);
+}
+
+.pinout-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-light);
+  font-family: ui-monospace, monospace;
+}
+
+.pinout-chip strong {
+  color: var(--primary-blue);
+}
+

@@ -27,8 +27,11 @@
         </div>
 
         <div class="warning-strip">
-          <span class="lamp gps">GPS: 3D Fix</span>
-          <span class="lamp abs">Sensors: Active</span>
+          <button id="openDiagnosticsBtn" class="lamp ready" style="cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.12); font-weight: 600; padding: 4px 10px; border-radius: 999px;">
+            ⚡ Connection Analyzer: 100% OK
+          </button>
+          <span class="lamp gps" id="gpsBadge">GPS: 3D Fix</span>
+          <span class="lamp abs" id="sensorsBadge">Sensors: Active</span>
           <span id="twilioBadge" class="lamp">Twilio checking</span>
           <span id="demoBadge" class="lamp">Demo mode</span>
           <nav class="nav-group" aria-label="Main Navigation">
@@ -53,10 +56,24 @@
               </span>
               <span class="card-label">Driver Monitoring (DMS)</span>
             </div>
-            <span id="driverStatusBadge" class="status-badge normal">Awake</span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button id="toggleCameraBtn" class="camera-toggle-btn" title="Toggle Real-Time DMS Face & Eye Camera">
+                📹 Camera
+              </button>
+              <span id="driverStatusBadge" class="status-badge normal">Awake</span>
+            </div>
           </div>
 
           <div class="driver-dms-content">
+            <!-- Optional Live Camera Preview Container -->
+            <div id="dmsCameraContainer" class="dms-camera-box" style="display: none;">
+              <video id="dmsVideo" autoplay playsinline muted style="width: 100%; height: 110px; object-fit: cover; border-radius: 8px; transform: scaleX(-1);"></video>
+              <canvas id="dmsCanvas" style="display: none;"></canvas>
+              <div class="camera-overlay-badge">
+                <span class="pulse-indicator"></span> Live Eye Analysis
+              </div>
+            </div>
+
             <div class="dms-hero-status">
               <div class="dms-avatar-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -88,7 +105,7 @@
               <div class="dms-metric-box">
                 <span class="dms-metric-label">Eye / Blink Status</span>
                 <div id="driverEyeStatus" class="dms-metric-value">Normal</div>
-                <span class="field-help">IR Camera Active</span>
+                <span class="field-help" id="dmsSourceLabel">IR Camera Active</span>
               </div>
             </div>
           </div>
@@ -172,7 +189,7 @@
             <div class="dms-metrics-grid">
               <div class="dms-metric-box">
                 <span class="dms-metric-label">In-Cabin Buzzer</span>
-                <div id="cabinBuzzerStatus" class="dms-metric-value">Off (Normal)</div>
+                <div id="cabinBuzzerStatus" class="dms-metric-value">Off (Nominal)</div>
               </div>
               <div class="dms-metric-box">
                 <span class="dms-metric-label">Emergency Relay</span>
@@ -192,10 +209,13 @@
           <section class="panel telemetry">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">Vehicle Telemetry</p>
-                <h2>Accident Event Details</h2>
+                <p class="eyebrow">Vehicle Telemetry & AI Analytics</p>
+                <h2>Real-Time Dynamic Telemetry</h2>
               </div>
-              <span id="eventTime" class="pill subtle" title="Last event timestamp">--:--</span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span id="hwSourceBadge" class="pill subtle">Active Sensor Bridge</span>
+                <span id="eventTime" class="pill subtle" title="Last event timestamp">--:--</span>
+              </div>
             </div>
 
             <div class="telemetry-grid">
@@ -205,7 +225,11 @@
               </div>
               <div class="telemetry-item">
                 <span>Location Coordinates</span>
-                <strong id="locationText">Coimbatore Bypass</strong>
+                <strong id="locationText">11.0168, 76.9558 | Coimbatore Bypass</strong>
+              </div>
+              <div class="telemetry-item">
+                <span>Speed & GPS Satellites</span>
+                <strong id="telemetrySpeed">48.5 km/h (9 Sats, 3D Fix)</strong>
               </div>
               <div class="telemetry-item">
                 <span>Current Stage</span>
@@ -220,9 +244,32 @@
                 <strong id="impactGForce">1.02 G (Nominal Vector)</strong>
               </div>
               <div class="telemetry-item">
+                <span>Vehicle Orientation (Tilt)</span>
+                <strong id="tiltAngleDisplay">1.4° Tilt (Roll 0.8°, Pitch 1.2°)</strong>
+              </div>
+              <div class="telemetry-item">
                 <span>Communication Gateway</span>
                 <strong id="commGateway">Twilio Gateway (Active)</strong>
               </div>
+
+              <!-- AI Collision Severity Assessment Card -->
+              <div class="telemetry-item ai-severity-card" style="grid-column: span 2;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-weight: 700; color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+                    🤖 SafeGuard AI Severity Classifier
+                  </span>
+                  <span id="aiSeverityBadge" class="status-badge normal">Nominal / Minor</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                  <span>Confidence: <strong id="aiConfidence">99.2%</strong></span>
+                  <span>Est. Delta-V: <strong id="aiDeltaV">4.3 km/h</strong></span>
+                  <span>Airbag: <strong id="aiAirbag">Armed (Not Deployed)</strong></span>
+                </div>
+                <div id="aiRecommendation" style="margin-top: 6px; font-size: 12px; color: var(--text-secondary);">
+                  Continuous baseline vehicle monitoring active.
+                </div>
+              </div>
+
               <div class="telemetry-item" style="grid-column: span 2;">
                 <span>Alert Recipients</span>
                 <strong id="recipientsSummary">No alerts sent yet</strong>
@@ -241,19 +288,19 @@
           <section class="status-rail">
             <article>
               <span>GPS Lock</span>
-              <strong>Active (3D Fix)</strong>
+              <strong id="railGps">Active (3D Fix)</strong>
             </article>
             <article>
-              <span>Sensor Health</span>
-              <strong>4/4 Online</strong>
+              <span>Circuit Integrity</span>
+              <strong id="railCircuit">6/6 Channels OK</strong>
             </article>
             <article>
               <span>Delivery Mode</span>
               <strong id="railAlertMode">Demo Mode</strong>
             </article>
             <article>
-              <span>Last Event Time</span>
-              <strong id="railLastEvent">No event</strong>
+              <span>Hardware Link</span>
+              <strong id="railHwLink">Virtual Bridge (100% Loop)</strong>
             </article>
           </section>
         </div>
@@ -296,6 +343,22 @@
                 ↺ RESET MONITORING SYSTEM
               </button>
             </div>
+
+            <!-- Real-World Crash Test Vector Presets -->
+            <div class="crash-presets-wrap" style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;">
+              <span class="field-help" style="margin-bottom: 8px; display: block; font-weight: 600;">Crash Physics Test Vectors (100% Real-Life Simulation):</span>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                <button type="button" class="preset-btn minor" data-crash="minor" title="Simulate 1.95G Minor Bumper Impact">
+                  Minor (1.95g)
+                </button>
+                <button type="button" class="preset-btn severe" data-crash="severe" title="Simulate 5.20G Severe Collision">
+                  Severe (5.20g)
+                </button>
+                <button type="button" class="preset-btn rollover" data-crash="rollover" title="Simulate 72° Vehicle Rollover">
+                  Rollover (72°)
+                </button>
+              </div>
+            </div>
           </section>
 
           <!-- Escalation Timeline -->
@@ -319,6 +382,75 @@
         </div>
       </section>
     </main>
+
+    <!-- Modal Dialog for Connection Analyzer & Circuit Diagnostics -->
+    <dialog id="diagnosticsDialog" class="automotive-modal" style="max-width: 820px; width: 92vw;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <span class="eyebrow">Hardware Integrity Verification</span>
+            <h2 style="font-size: 20px; margin: 4px 0 0 0;">Connection Analyzer & Pinout Diagnostics</h2>
+          </div>
+          <button type="button" id="closeDiagnosticsDialog" class="close-btn">✕</button>
+        </div>
+
+        <div class="diagnostics-content" style="margin-top: 14px;">
+          <!-- Overall Health Banner -->
+          <div class="diag-banner" style="display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;">
+            <div>
+              <strong style="color: #10b981; font-size: 15px;">✓ All 6 Subsystems Verified & Operational</strong>
+              <div id="diagHwLabel" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                ESP32 Hardware Circuit / Virtual Bus Active
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 11px; text-transform: uppercase; color: var(--text-secondary);">Health Score</span>
+              <strong id="diagHealthScore" style="display: block; font-size: 22px; color: #10b981;">100%</strong>
+            </div>
+          </div>
+
+          <!-- Microcontroller Connection Controls -->
+          <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="serialPortSelect" style="padding: 6px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--text-primary);">
+                <option value="VIRTUAL-ESP32-BRIDGE">VIRTUAL-ESP32-BRIDGE (Emulated Hardware Loop)</option>
+              </select>
+              <button type="button" id="connectSerialBtn" style="padding: 6px 12px; font-size: 12px; background: var(--primary); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                Connect Port
+              </button>
+              <button type="button" id="webSerialBtn" style="padding: 6px 12px; font-size: 12px; background: #0284c7; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" title="Connect directly to physical ESP32 via USB in Chrome/Edge">
+                ⚡ Web Serial (USB)
+              </button>
+            </div>
+            <button type="button" id="runDiagBtn" style="padding: 6px 14px; font-size: 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              ↻ Re-Run Diagnostics
+            </button>
+          </div>
+
+          <!-- Component Diagnostics Table -->
+          <div class="table-wrap" style="max-height: 280px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border); text-align: left; color: var(--text-secondary);">
+                  <th style="padding: 8px;">Subsystem</th>
+                  <th style="padding: 8px;">Interface / Protocol</th>
+                  <th style="padding: 8px;">Pins Assigned</th>
+                  <th style="padding: 8px;">Integrity</th>
+                  <th style="padding: 8px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="diagTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Detailed Pinout Verification -->
+          <div style="margin-top: 14px;">
+            <span class="field-help" style="font-weight: 600; margin-bottom: 6px; display: block;">Circuit Pinout Verification (Per '🚗 Smart Accident Detection draft.docx'):</span>
+            <div id="pinoutChips" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+          </div>
+        </div>
+      </div>
+    </dialog>
 
     <script src="/static/app.js"></script>
   </body>

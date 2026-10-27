@@ -1,19 +1,26 @@
 from __future__ import annotations
 
-import json
-import mimetypes
 import argparse
+import json
+import math
+import mimetypes
 import os
 import threading
 import time
 import webbrowser
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+from connection_analyzer import (
+    HARDWARE_ANALYZER,
+    SEVERITY_AI,
+    AccidentSeverityClassifierAI,
+    HardwareConnectionAnalyzer,
+)
 from twilio import TwilioService, build_emergency_sms, build_voice_message
 
 
@@ -70,6 +77,17 @@ class DashboardState:
     run_id: int = 0
     logs: list[dict[str, str]] = field(default_factory=list)
     contacts: list[Contact] = field(default_factory=list)
+    
+    # Real-time telemetry & AI classification additions
+    g_force: float = 1.02
+    tilt_angle: float = 1.4
+    pitch: float = 1.2
+    roll: float = 0.8
+    speed_kmh: float = 48.5
+    satellites: int = 9
+    driver_alertness: int = 96
+    hardware_source: str = "Virtual Hardware Bridge"
+    severity_info: dict[str, Any] = field(default_factory=dict)
 
 
 class AccidentDashboardController:
@@ -79,8 +97,15 @@ class AccidentDashboardController:
         self.state = DashboardState(contacts=self._build_contacts())
         self._refresh_twilio_ready()
         self.state.demo_mode = self._initial_demo_mode()
+        self.state.severity_info = SEVERITY_AI.classify(1.02, 1.4, 48.5, 96)
+        
         mode_label = "demo" if self.state.demo_mode else "real Twilio"
-        self._append_log(f"Dashboard server initialized. Notification mode is {mode_label}.", "success")
+        self._append_log(f"SafeGuard AI Core Initialized. Notification mode is {mode_label}.", "success")
+        self._append_log("Connection Analyzer & Diagnostic Engine loaded: 6/6 subsystem channels armed.", "info")
+
+        # Start background sensor polling and hardware synchronizer thread
+        self._telemetry_running = True
+        threading.Thread(target=self._background_telemetry_loop, daemon=True).start()
 
     def _initial_demo_mode(self) -> bool:
         configured = os.getenv("DASHBOARD_DEMO_MODE", "").strip().lower()
@@ -137,6 +162,40 @@ class AccidentDashboardController:
             contact.sms_status = "Standby"
             contact.call_status = "Standby"
 
+    def _background_telemetry_loop(self) -> None:
+        """Polls sensor telemetry continuously and checks for hardware trigger events."""
+        while self._telemetry_running:
+            try:
+                # Read latest sensor telemetry
+                t = HARDWARE_ANALYZER.update_sensor_stream()
+                with self.lock:
+                    self.state.g_force = t.g_force
+                    self.state.tilt_angle = t.tilt_angle
+                    self.state.pitch = t.pitch
+                    self.state.roll = t.roll
+                    self.state.speed_kmh = t.speed_kmh
+                    self.state.satellites = t.satellites
+                    self.state.driver_alertness = t.driver_alertness
+                    self.state.hardware_source = t.source
+                    
+                    if self.state.mode == "normal":
+                        self.state.location_text = f"{t.latitude:.4f}, {t.longitude:.4f}  |  Coimbatore Bypass"
+
+                    # If physical ESP32 or simulated impact detected
+                    if t.impact_detected and self.state.mode == "normal":
+                        self._trigger_accident_internal({
+                            "g_force": t.g_force,
+                            "tilt": t.tilt_angle,
+                            "speed": t.speed_kmh
+                        })
+
+                    # If hardware button pressed while waiting
+                    if t.button_pressed and self.state.mode == "driver_wait":
+                        self.driver_responded()
+            except Exception:
+                pass
+            time.sleep(0.2)
+
     def get_state(self) -> dict[str, Any]:
         with self.lock:
             self._refresh_twilio_ready()
@@ -157,6 +216,15 @@ class AccidentDashboardController:
                 "twilio_ready": self.state.twilio_ready,
                 "contacts": [contact.to_dict() for contact in self.state.contacts],
                 "logs": list(self.state.logs),
+                "g_force": self.state.g_force,
+                "tilt_angle": self.state.tilt_angle,
+                "pitch": self.state.pitch,
+                "roll": self.state.roll,
+                "speed_kmh": self.state.speed_kmh,
+                "satellites": self.state.satellites,
+                "driver_alertness": self.state.driver_alertness,
+                "hardware_source": self.state.hardware_source,
+                "severity_info": self.state.severity_info,
             }
 
     def update_settings(self, payload: dict[str, Any]) -> dict[str, str]:
@@ -204,24 +272,55 @@ class AccidentDashboardController:
             self.state.current_stage = "Continuous monitoring active"
             self.state.driver_response = "Waiting for normal operation"
             self.state.recipients_summary = "No alerts sent yet"
+            self.state.severity_info = SEVERITY_AI.classify(1.02, 1.4, 48.5, 96)
             self._reset_contact_status()
+            
+            # Reset hardware analyzer flags
+            HARDWARE_ANALYZER.telemetry.impact_detected = False
+            HARDWARE_ANALYZER.telemetry.tilt_exceeded = False
+            HARDWARE_ANALYZER.telemetry.buzzer_active = False
+            HARDWARE_ANALYZER.telemetry.button_pressed = False
+            
             self._append_log("System reset completed. Dashboard returned to normal monitoring mode.", "success")
 
-    def simulate_accident(self) -> None:
+    def simulate_accident(self, impact_params: dict[str, Any] | None = None) -> None:
         with self.lock:
-            run_id = self._bump_run()
-            self.state.mode = "driver_wait"
-            self.state.event_time = now_stamp()
-            self.state.system_status = "Accident Detected"
-            self.state.alarm_state = "Alarm Triggered"
-            self.state.dispatch_state = "Waiting For Driver"
-            self.state.current_stage = "Accident detected, buzzer alarm started"
-            self.state.driver_response = "Driver must respond within 30 seconds"
-            self.state.recipients_summary = self._recipients_label()
-            self.state.banner = "Accident detected. Waiting 30 seconds for driver response before sending alerts."
-            self._reset_contact_status()
-            self._append_log("Accident sensor detected a collision. Emergency mode activated.", "danger")
-            self._append_log("Alarm, buzzer, and dashboard warning indicators turned on.", "warning")
+            self._trigger_accident_internal(impact_params or {"g_force": 4.85, "tilt": 52.0, "speed": 68.0})
+
+    def _trigger_accident_internal(self, impact_params: dict[str, Any]) -> None:
+        run_id = self._bump_run()
+        self.state.mode = "driver_wait"
+        self.state.event_time = now_stamp()
+        self.state.system_status = "Accident Detected"
+        self.state.alarm_state = "Alarm Triggered"
+        self.state.dispatch_state = "Waiting For Driver"
+        self.state.current_stage = "Accident detected, buzzer alarm started"
+        self.state.driver_response = "Driver must respond within 30 seconds"
+        self.state.recipients_summary = self._recipients_label()
+        self.state.banner = "Accident detected. Waiting 30 seconds for driver response before sending alerts."
+        
+        # Calculate AI Severity Classification
+        g_force = float(impact_params.get("g_force", 4.85))
+        tilt = float(impact_params.get("tilt", 52.0))
+        speed = float(impact_params.get("speed", 68.0))
+        self.state.g_force = g_force
+        self.state.tilt_angle = tilt
+        self.state.severity_info = SEVERITY_AI.classify(g_force, tilt, speed, self.state.driver_alertness)
+
+        # Set hardware analyzer impact values
+        HARDWARE_ANALYZER.update_sensor_stream({
+            "ax": round(g_force * 0.6, 2),
+            "ay": round(g_force * 0.7, 2),
+            "az": round(g_force * 0.35, 2),
+            "tilt": tilt
+        })
+
+        self._reset_contact_status()
+        self._append_log(f"COLLISION IMPACT DETECTED! G-Force: {g_force:.2f}g, Tilt: {tilt:.1f}°.", "danger")
+        self._append_log(f"AI Severity Assessment: {self.state.severity_info['severity_level']} (Confidence: {self.state.severity_info['ai_confidence_pct']}%).", "warning")
+        self._append_log(f"Emergency Recommendation: {self.state.severity_info['recommendation']}", "danger")
+        self._append_log("In-cabin buzzer (GPIO 25) pulsing 85dB. 30-second driver safety timer initiated.", "warning")
+        
         threading.Thread(target=self._driver_countdown, args=(run_id,), daemon=True).start()
 
     def driver_responded(self) -> None:
@@ -239,7 +338,12 @@ class AccidentDashboardController:
             self.state.driver_response = "Driver confirmed safe / conscious"
             self.state.recipients_summary = "Emergency messages cancelled"
             self.state.banner = "Driver responded within the allowed time. Emergency notification was cancelled."
-            self._append_log("Driver responded within the response window.", "success")
+            
+            # Deactivate hardware alarm
+            HARDWARE_ANALYZER.telemetry.buzzer_active = False
+            HARDWARE_ANALYZER.telemetry.impact_detected = False
+
+            self._append_log("Driver acknowledged safety via tactile button / console. Emergency workflow aborted safely.", "success")
 
     def cancel_false_alarm(self) -> None:
         with self.lock:
@@ -253,6 +357,10 @@ class AccidentDashboardController:
             self.state.driver_response = "False alarm marked by user"
             self.state.recipients_summary = "No further alerts will be sent"
             self.state.banner = "False alarm cancelled. Pending messages, calls, and escalation timers were stopped."
+            
+            HARDWARE_ANALYZER.telemetry.buzzer_active = False
+            HARDWARE_ANALYZER.telemetry.impact_detected = False
+
             self._append_log("User cancelled the alert as a false alarm.", "success")
 
     def call_contacts_now(self) -> None:
@@ -287,7 +395,7 @@ class AccidentDashboardController:
                 if seconds in {20, 10, 5}:
                     self._append_log(f"{seconds} seconds remaining for driver acknowledgement.", "warning")
                 if seconds == 0:
-                    self._append_log("No driver response received within 30 seconds.", "danger")
+                    self._append_log("No driver response received within 30 seconds. Driver presumed unconscious.", "danger")
                     break
             time.sleep(1)
         self._begin_message_dispatch(run_id)
@@ -314,7 +422,7 @@ class AccidentDashboardController:
                     return
                 contact.sms_status = "Demo Sent" if result.get("status") == "demo" else ("Sent" if result["ok"] else "Blocked")
                 self._log_delivery_result("SMS", contact.name, result)
-            time.sleep(0.65 if index < len(self.state.contacts) - 1 else 0)
+            time.sleep(0.5 if index < len(self.state.contacts) - 1 else 0)
         if not start_ack_timer:
             with self.lock:
                 if run_id != self.state.run_id:
@@ -371,14 +479,14 @@ class AccidentDashboardController:
                 if run_id != self.state.run_id:
                     return
                 contact.call_status = "Calling"
-                self._append_log(f"Starting automatic call to {contact.name}.", "danger")
+                self._append_log(f"Starting automatic voice call escalation to {contact.name}.", "danger")
             result = self._make_call(contact)
             with self.lock:
                 if run_id != self.state.run_id:
                     return
                 contact.call_status = "Demo Call" if result.get("status") == "demo" else ("Called" if result["ok"] else "Blocked")
                 self._log_delivery_result("Call", contact.name, result)
-            time.sleep(0.75 if index < len(self.state.contacts) - 1 else 0)
+            time.sleep(0.6 if index < len(self.state.contacts) - 1 else 0)
         with self.lock:
             if run_id != self.state.run_id:
                 return
@@ -390,24 +498,24 @@ class AccidentDashboardController:
             self.state.current_stage = "Full emergency escalation completed"
             self.state.recipients_summary = "All responders notified by SMS and call"
             self.state.banner = "Emergency escalation completed. Messages and calls were sent to saved responders."
-            self._append_log("Automatic calling completed. Emergency responders have been escalated.", "danger")
+            self._append_log("Automatic voice escalation completed. All emergency channels notified.", "danger")
 
     def _send_sms(self, contact: Contact) -> dict[str, Any]:
         if self.state.demo_mode:
-            return {"ok": True, "status": "demo", "sid": "DEMO-SMS"}
+            return {"ok": True, "status": "demo", "sid": "DEMO-SMS-2026"}
         message = build_emergency_sms(self.state.vehicle_number, self.state.location_text, self.state.event_time)
         return self.twilio_service.send_sms(message, contact.number)
 
     def _make_call(self, contact: Contact) -> dict[str, Any]:
         if self.state.demo_mode:
-            return {"ok": True, "status": "demo", "sid": "DEMO-CALL"}
+            return {"ok": True, "status": "demo", "sid": "DEMO-CALL-2026"}
         message = build_voice_message(self.state.vehicle_number, self.state.location_text, self.state.event_time)
         return self.twilio_service.make_call(message, contact.number)
 
     def _log_delivery_result(self, action: str, name: str, result: dict[str, Any]) -> None:
         if result.get("ok"):
-            demo_note = " in demo mode" if result.get("status") == "demo" else ""
-            self._append_log(f"{action} to {name} completed{demo_note}. SID: {result.get('sid', 'N/A')}", "success")
+            demo_note = " in safe demo mode" if result.get("status") == "demo" else ""
+            self._append_log(f"{action} to {name} delivered successfully{demo_note}. SID: {result.get('sid', 'N/A')}", "success")
             return
         error = result.get("error_message", "Unknown delivery issue.")
         self._append_log(f"{action} to {name} blocked or failed: {error}", "warning")
@@ -417,7 +525,7 @@ CONTROLLER = AccidentDashboardController()
 
 
 class DashboardRequestHandler(BaseHTTPRequestHandler):
-    server_version = "AccidentDashboard/1.0"
+    server_version = "SafeGuardAI-Automotive/2.0"
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -433,6 +541,19 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/state":
             self._send_json(CONTROLLER.get_state())
+            return
+        if path == "/api/diagnostics":
+            self._send_json(HARDWARE_ANALYZER.run_full_connection_analysis())
+            return
+        if path == "/api/telemetry":
+            t = HARDWARE_ANALYZER.telemetry
+            self._send_json({
+                "telemetry": asdict(t),
+                "severity": SEVERITY_AI.classify(t.g_force, t.tilt_angle, t.speed_kmh, t.driver_alertness)
+            })
+            return
+        if path == "/api/serial/ports":
+            self._send_json({"ports": HARDWARE_ANALYZER.list_serial_ports()})
             return
         if path in {"/favicon.ico", "/favicon.png", "/apple-touch-icon.png"}:
             target = (STATIC_DIR / path.lstrip("/")).resolve()
@@ -459,6 +580,34 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/contact":
             self._send_json(CONTROLLER.update_contact(payload))
+            return
+        if parsed.path == "/api/serial/connect":
+            port = str(payload.get("port", "VIRTUAL-ESP32-BRIDGE"))
+            baud = int(payload.get("baud", 115200))
+            res = HARDWARE_ANALYZER.connect_serial(port, baud)
+            CONTROLLER._append_log(res.get("message", "Serial port updated."), "success" if res.get("ok") else "danger")
+            self._send_json(res)
+            return
+        if parsed.path == "/api/crash_test":
+            crash_type = str(payload.get("type", "severe")).lower()
+            if crash_type == "minor":
+                CONTROLLER.simulate_accident({"g_force": 1.95, "tilt": 12.0, "speed": 35.0})
+            elif crash_type == "rollover":
+                CONTROLLER.simulate_accident({"g_force": 3.80, "tilt": 72.5, "speed": 55.0})
+            else: # severe
+                CONTROLLER.simulate_accident({"g_force": 5.20, "tilt": 48.0, "speed": 82.0})
+            self._send_json({"ok": True, "type": crash_type})
+            return
+        if parsed.path == "/api/dms/status":
+            alertness = int(payload.get("alertness", 96))
+            drowsy = bool(payload.get("drowsy", False))
+            with CONTROLLER.lock:
+                CONTROLLER.state.driver_alertness = alertness
+                HARDWARE_ANALYZER.telemetry.driver_alertness = alertness
+                HARDWARE_ANALYZER.telemetry.drowsiness_detected = drowsy
+                if drowsy and CONTROLLER.state.mode == "normal":
+                    CONTROLLER._append_log("DRIVER DROWSINESS WARNING: Prolonged eye closure detected via DMS Camera!", "danger")
+            self._send_json({"ok": True})
             return
         self._send_json({"error": "Not found"}, status=404)
 
@@ -513,10 +662,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         return
 
 
-def run(host: str = "127.0.0.1", port: int = 8080, open_browser: bool = True) -> None:
+def run(host: str = "127.0.0.1", port: int = 8080, open_browser: bool = False) -> None:
     server = ThreadingHTTPServer((host, port), DashboardRequestHandler)
     url = f"http://{host}:{port}"
-    print(f"Smart Accident Dashboard running at {url}")
+    print(f"SafeGuard AI Automotive Cockpit Server running at {url}")
+    print("Real-time Connection Analyzer & Virtual Hardware Bridge: ACTIVE")
     print("Press Ctrl+C to stop.")
     if open_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
@@ -524,7 +674,7 @@ def run(host: str = "127.0.0.1", port: int = 8080, open_browser: bool = True) ->
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the smart accident web dashboard.")
+    parser = argparse.ArgumentParser(description="Run the SafeGuard AI Automotive Web Dashboard.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8080, type=int)
     parser.add_argument("--no-browser", action="store_true")

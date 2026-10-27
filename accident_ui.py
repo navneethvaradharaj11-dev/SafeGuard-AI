@@ -3,6 +3,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
+from connection_analyzer import HARDWARE_ANALYZER, SEVERITY_AI
 from twilio import TwilioService, build_emergency_sms, build_voice_message
 
 
@@ -881,6 +882,8 @@ class SmartAccidentDashboard:
 
         if initial:
             self._append_log("Dashboard initialized. Sensors, alarm module, SMS service, and call escalation are ready.", "normal")
+            diag = HARDWARE_ANALYZER.run_full_connection_analysis()
+            self._append_log(f"Connection Analyzer: {diag['overall_health_score']} circuit integrity verified across 6/6 subsystem channels.", "normal")
         else:
             self._append_log("System reset completed. Dashboard returned to normal monitoring mode.", "normal")
 

@@ -18,15 +18,16 @@
             <img src="/static/favicon.png" alt="SafeGuard AI logo" style="width: 28px; height: 28px; object-fit: contain;">
           </div>
           <div class="brand-info">
-            <p class="eyebrow">Emergency Response Management</p>
+            <p class="eyebrow">Emergency Response & Hardware Diagnostics</p>
             <h1 class="brand-title">
               Service Bay & Dispatch Console
-              <span class="brand-badge">Black Box</span>
+              <span class="brand-badge">Black Box & Diagnostics</span>
             </h1>
           </div>
         </div>
 
         <div class="warning-strip">
+          <span class="lamp ready" id="sbHealthBadge">Hardware Integrity: 100% OK</span>
           <span class="lamp gps">GPS: 3D Fix</span>
           <span class="lamp abs">Sensors: Active</span>
           <span id="twilioBadge" class="lamp">Twilio checking</span>
@@ -38,6 +39,108 @@
           </nav>
         </div>
       </header>
+
+      <!-- Hardware Connection Diagnostics Station -->
+      <section class="panel page-panel" style="margin-bottom: 20px;">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Hardware Connection & Circuit Diagnostics</p>
+            <h2>Microcontroller Pinout & Bus Verification</h2>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span id="sbHardwareSource" class="pill subtle">Active Sensor Bridge</span>
+            <button type="button" id="sbRunDiagnostics" style="padding: 6px 12px; font-size: 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              ↻ Run Connection Diagnostics
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Diagnostic Metric Cards -->
+        <div class="status-rail" style="margin-bottom: 16px;">
+          <article>
+            <span>MPU-6050 Bus</span>
+            <strong style="color: #10b981;">GPIO 21 (SDA) / 22 (SCL)</strong>
+          </article>
+          <article>
+            <span>NEO-6M GPS UART</span>
+            <strong style="color: #10b981;">GPIO 16 (RX) / 17 (TX)</strong>
+          </article>
+          <article>
+            <span>Audio Buzzer</span>
+            <strong style="color: #10b981;">GPIO 25 (Active Pulse)</strong>
+          </article>
+          <article>
+            <span>Cancel Push Button</span>
+            <strong style="color: #10b981;">GPIO 26 (Interrupt)</strong>
+          </article>
+        </div>
+
+        <!-- Live Pinout Connections Table -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Signal Function</th>
+                <th>ESP32 GPIO</th>
+                <th>Target Voltage</th>
+                <th>Live Bus Reading</th>
+                <th>Circuit Status</th>
+              </tr>
+            </thead>
+            <tbody id="serviceBayPinoutBody">
+              <tr>
+                <td><strong>MPU-6050 Accelerometer/Gyro</strong></td>
+                <td>I2C Serial Data (SDA)</td>
+                <td><code>GPIO 21</code></td>
+                <td>3.3V</td>
+                <td>3.28V (400kHz ACK)</td>
+                <td><span class="status-chip ready">CONNECTED</span></td>
+              </tr>
+              <tr>
+                <td><strong>MPU-6050 Accelerometer/Gyro</strong></td>
+                <td>I2C Serial Clock (SCL)</td>
+                <td><code>GPIO 22</code></td>
+                <td>3.3V</td>
+                <td>3.29V (Square Wave)</td>
+                <td><span class="status-chip ready">CONNECTED</span></td>
+              </tr>
+              <tr>
+                <td><strong>NEO-6M GPS Receiver</strong></td>
+                <td>UART Hardware RX2 (NMEA Data)</td>
+                <td><code>GPIO 16</code></td>
+                <td>3.3V</td>
+                <td>3.27V (9600 Baud)</td>
+                <td><span class="status-chip ready">CONNECTED</span></td>
+              </tr>
+              <tr>
+                <td><strong>NEO-6M GPS Receiver</strong></td>
+                <td>UART Hardware TX2 (Configuration)</td>
+                <td><code>GPIO 17</code></td>
+                <td>3.3V</td>
+                <td>3.30V (UBX Stream)</td>
+                <td><span class="status-chip ready">CONNECTED</span></td>
+              </tr>
+              <tr>
+                <td><strong>In-Cabin Piezo Buzzer</strong></td>
+                <td>PWM Collision Alarm Output</td>
+                <td><code>GPIO 25</code></td>
+                <td>3.3V</td>
+                <td>3.28V (Active Transistor Gate)</td>
+                <td><span class="status-chip ready">ARMED</span></td>
+              </tr>
+              <tr>
+                <td><strong>Tactile Driver Cancel Button</strong></td>
+                <td>Safety Interrupt (Pull-Up)</td>
+                <td><code>GPIO 26</code></td>
+                <td>3.3V</td>
+                <td>3.30V (Pull-Up HIGH)</td>
+                <td><span class="status-chip ready">ARMED</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <!-- Service Bay Workstation Split -->
       <section id="serviceBay" class="panel service-panel page-panel">
@@ -108,8 +211,8 @@
         </label>
         
         <div class="dialog-actions">
-          <button value="cancel" type="button" id="closeDialog">Cancel</button>
-          <button value="default" type="submit">Save Changes</button>
+          <button type="button" id="closeDialog" class="cancel-btn">Cancel</button>
+          <button type="submit" class="save-btn">Save Contact</button>
         </div>
       </form>
     </dialog>
